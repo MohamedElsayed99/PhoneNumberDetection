@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PhoneNumberDetection.Interfaces;
 using System;
 using System.IO;
+using System.Text;
 
 namespace PhoneNumberDetection.PhoneNumberDetection
 {
@@ -10,6 +11,8 @@ namespace PhoneNumberDetection.PhoneNumberDetection
     {
         static void Main(string[] args)
         {
+            Console.OutputEncoding = Encoding.UTF8;
+
             var serviceProvider = new ServiceCollection()
                 .AddSingleton<IPhoneNumberDetector, PhoneNumberDetector>()
                 .BuildServiceProvider();
@@ -42,9 +45,45 @@ namespace PhoneNumberDetection.PhoneNumberDetection
                 return Console.ReadLine();
             }
         }
-    }
 
+/*        static string GetInputFromFile()
+        {
+            while (true)
+            {
+                Console.WriteLine("Enter file path:");
+                string filePath = Console.ReadLine();
 
+                if (File.Exists(filePath))
+                {
+                    try
+                    {
+                        return File.ReadAllText(filePath);
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        Console.WriteLine("Access to the file is denied. Please check file permissions.");
+                    }
+                    catch (FileNotFoundException)
+                    {
+                        Console.WriteLine("The file was not found. Please check the file path.");
+                    }
+                    catch (IOException ex)
+                    {
+                        Console.WriteLine($"An I/O error occurred: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"An error occurred: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("File does not exist. Please enter a valid file path.");
+                }
+            }
+        }
+*/    }
 }
+
 
 

@@ -1,5 +1,9 @@
 ﻿using System.Text.RegularExpressions;
 using PhoneNumberDetection.Interfaces;
+using System.Globalization;
+using System.Linq;
+using System.Collections.Generic;
+using System.Text;
 
 namespace PhoneNumberDetection.PhoneNumberDetection
 {
@@ -7,12 +11,10 @@ namespace PhoneNumberDetection.PhoneNumberDetection
     {
         private static readonly Dictionary<string, string> NumberWords = new()
         {
-            { "zero", "0" }, { "one", "1" }, { "two", "2" }, { "three", "3" },
-            { "four", "4" }, { "five", "5" }, { "six", "6" }, { "seven", "7" },
-            { "eight", "8" }, { "nine", "9" },
-            { "शून्य", "0" }, { "एक", "1" }, { "दो", "2" }, { "तीन", "3" },
-            { "चार", "4" }, { "पांच", "5" }, { "छह", "6" }, { "सात", "7" },
-            { "आठ", "8" }, { "नौ", "9" }
+            { "zero", "0" }, { "one", "1" }, { "two", "2" }, { "three", "3" }, { "four", "4" },
+            { "five", "5" }, { "six", "6" }, { "seven", "7" }, { "eight", "8" }, { "nine", "9" },
+            { "०", "0" }, { "१", "1" }, { "२", "2" }, { "३", "3" }, { "४", "4" },
+            { "५", "5" }, { "६", "6" }, { "७", "7" }, { "८", "8" }, { "९", "9" }
         };
 
         public List<PhoneNumberInfo> Detect(string input)
@@ -32,13 +34,22 @@ namespace PhoneNumberDetection.PhoneNumberDetection
 
         private string NormalizeTextToDigits(string input)
         {
-            var words = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var normalized = new StringBuilder();
+            var words = input.Split(new[] { ' ', '-', '.', ',', '\n', '\r', '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
 
-            return string.Join("", words.Select(word =>
+            foreach (var word in words)
             {
-                string lowerWord = word.ToLower().TrimEnd('.', ',');
-                return NumberWords.ContainsKey(lowerWord) ? NumberWords[lowerWord] : lowerWord;
-            }));
+                if (NumberWords.TryGetValue(word.ToLowerInvariant(), out var digit))
+                {
+                    normalized.Append(digit);
+                }
+                else
+                {
+                    normalized.Append(word);
+                }
+                //normalized.Append(" "); // Preserve spaces to separate numbers
+            }
+            return normalized.ToString().Trim();
         }
 
         private List<PhoneNumberInfo> DetectNumericPhoneNumbers(string normalizedInput, string originalInput)
@@ -46,7 +57,7 @@ namespace PhoneNumberDetection.PhoneNumberDetection
             var patterns = new[]
             {
                 @"\b\d{10}\b", // 10-digit numbers
-                @"\b(\+\d{1,3})?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}\b", // Numbers with country codes or separators
+                @"\b(\+?\d{1,3})?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}\b", // Numbers with country codes or separators
                 @"\b\d{1,4}[-.\s]?\(\d{1,4}\)[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,4}\b" // Numbers with parentheses for area codes
             };
 
@@ -74,19 +85,13 @@ namespace PhoneNumberDetection.PhoneNumberDetection
 
         private string ExtractOriginalText(string originalInput, string normalizedValue)
         {
-            // Find the part in original input that matches the normalized value
-            var words = originalInput.Split(new[] { ' ', '-', '.', ',' }, StringSplitOptions.RemoveEmptyEntries);
-            var normalizedWords = normalizedValue.ToCharArray().Select(c => c.ToString());
-
-            foreach (var normalizedWord in normalizedWords)
+            var regex = new Regex(Regex.Escape(normalizedValue));
+            var match = regex.Match(NormalizeTextToDigits(originalInput));
+            if (match.Success)
             {
-                foreach (var word in words)
-                {
-                    if (word.Contains(normalizedWord))
-                    {
-                        return word;
-                    }
-                }
+                int startIndex = match.Index;
+                int length = match.Length;
+                return originalInput.Substring(startIndex, length);
             }
 
             return normalizedValue; // Fallback if no better match found
@@ -98,14 +103,9 @@ namespace PhoneNumberDetection.PhoneNumberDetection
                 return "Country code";
             if (phoneNumber.Contains("(") && phoneNumber.Contains(")"))
                 return "Parentheses";
-            if (phoneNumber.Contains("-") || phoneNumber.Contains(" "))
+            if (phoneNumber.Contains("-") || phoneNumber.Contains(" ") || phoneNumber.Contains("."))
                 return "With separators";
             return "10-digit";
         }
     }
 }
-
-
-
-
-
